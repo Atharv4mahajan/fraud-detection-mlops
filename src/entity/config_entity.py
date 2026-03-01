@@ -17,3 +17,15 @@ class DataIngestionConfig:
 class DataValidationConfig:
     schema_file_path: str = os.path.join("config", "schema.yaml")
     validation_report_file_path: str = os.path.join("artifacts", "data_validation", "report.yaml")
+    
+    
+
+@dataclass
+class DataTransformationConfig:
+    transformed_train_file_path: str = os.path.join("artifacts", "data_transformation", "train.npy")
+    transformed_test_file_path: str = os.path.join("artifacts", "data_transformation", "test.npy")
+    preprocessor_object_file_path: str = os.path.join("artifacts", "data_transformation", "preprocessor.pkl")
+
+@dataclass
+class ModelTrainerConfig:
+    trained_model_file_path: str = os.path.join("artifacts", "model_trainer", "autoencoder_model.h5")

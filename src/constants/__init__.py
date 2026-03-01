@@ -1,3 +1,4 @@
+
 DATABASE_NAME = "fraud_database"
 COLLECTION_NAME = "fraud_data"
 
