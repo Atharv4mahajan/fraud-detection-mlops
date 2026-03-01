@@ -19,3 +19,11 @@ class DataTransformationArtifact:
 @dataclass
 class ModelTrainerArtifact:
     trained_model_file_path: str
+@dataclass
+class ModelEvaluationArtifact:
+    precision: float
+    recall: float
+    f1_score: float
+    roc_auc: float
+    threshold: float
+    report_file_path: str

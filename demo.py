@@ -5,6 +5,8 @@ from src.components.data_transformation import DataTransformation
 from src.entity.config_entity import DataTransformationConfig
 from src.components.model_trainer import ModelTrainer
 from src.entity.config_entity import ModelTrainerConfig
+from src.components.model_evaluation import ModelEvaluation
+from src.entity.config_entity import ModelEvaluationConfig
 
 # Data Ingestion
 ingestion_config = DataIngestionConfig()
@@ -53,3 +55,19 @@ trainer_artifact = model_trainer.initiate_model_trainer()
 
 print(trainer_artifact)
 print("model_training successful")
+
+
+
+evaluation_config = ModelEvaluationConfig()
+
+model_evaluation = ModelEvaluation(
+    evaluation_config,
+    trainer_artifact.trained_model_file_path,
+    transformation_artifact.transformed_train_file_path,
+    transformation_artifact.transformed_test_file_path,
+    ingestion_artifact.test_file_path
+)
+
+evaluation_artifact = model_evaluation.initiate_model_evaluation()
+
+print(evaluation_artifact)
