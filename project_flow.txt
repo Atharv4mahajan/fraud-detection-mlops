@@ -1,0 +1,95 @@
+PROJECT: Fraud Detection System (Deep Learning + MLOps)
+
+------------------------------------------------------------
+PHASE 1: PROJECT INITIALIZATION
+------------------------------------------------------------
+
+1. Created project structure using template.py
+2. Designed modular src architecture:
+      - components
+      - configuration
+      - entity
+      - data_access
+      - aws_storage
+      - utils
+      - logging
+      - exception
+      - constants
+3. Created setup.py for local package installation
+4. Created pyproject.toml (modern packaging support)
+5. Created requirements.txt
+6. Activated vehicle environment
+7. Installed required libraries
+8. Installed tensorflow-cpu (for Autoencoder)
+9. Installed project in editable mode (pip install -e .)
+
+------------------------------------------------------------
+PHASE 2: PRODUCTION FOUNDATION
+------------------------------------------------------------
+
+10. Implemented structured logging system:
+      - Auto-created logs directory
+      - Timestamp-based log file generation
+      - Standardized logging format
+
+11. Implemented custom exception handling:
+      - Captures file name
+      - Captures line number
+      - Captures original error message
+      - Structured error trace for debugging
+
+12. Tested logging + exception using demo.py
+
+------------------------------------------------------------
+PHASE 3: DATABASE INTEGRATION
+------------------------------------------------------------
+
+13. Created MongoDB Atlas cluster
+14. Configured Network Access (IP Whitelisting)
+15. Created Database User with authentication
+16. Established MongoDB connection using pymongo
+17. Verified cluster connectivity
+18. Pushed creditcard.csv dataset to:
+        Database: fraud_database
+        Collection: fraud_data
+19. Implemented MongoDB connection module
+20. Implemented Data Access Layer (FraudData class)
+
+------------------------------------------------------------
+PHASE 4: DATA INGESTION PIPELINE
+------------------------------------------------------------
+
+21. Created constants module for centralized configuration
+22. Implemented config_entity.py (DataIngestionConfig)
+23. Implemented artifact_entity.py (DataIngestionArtifact)
+24. Implemented DataIngestion component:
+        - Load data from MongoDB
+        - Convert to pandas DataFrame
+        - Train-test split
+        - Save artifacts to artifacts/data_ingestion/
+25. Successfully generated:
+        - train.csv
+        - test.csv
+
+------------------------------------------------------------
+UPCOMING PHASES
+------------------------------------------------------------
+
+26. Data Validation (Schema + Drift Detection)
+27. Data Transformation (Scaling + Feature Engineering)
+28. Autoencoder Model Training
+29. Model Evaluation (Performance Comparison)
+30. Model Registry on AWS S3
+31. Prediction Pipeline (Flask API)
+32. Dockerization
+33. CI/CD using GitHub Actions
+34. Deployment on EC2
+35. Model Monitoring & Retraining Strategy
+
+------------------------------------------------------------
+FINAL GOAL
+------------------------------------------------------------
+
+Production-ready Deep Learning Fraud Detection System
+with complete MLOps lifecycle:
+Database → Pipeline → Model → Registry → API → Deployment → Monitoring
