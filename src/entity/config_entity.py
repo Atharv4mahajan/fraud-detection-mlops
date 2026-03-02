@@ -36,3 +36,6 @@ class ModelEvaluationConfig:
     evaluation_report_file_path: str = os.path.join(
         ARTIFACT_DIR, "model_evaluation", "evaluation_report.yaml"
     )
+@dataclass
+class ModelPusherConfig:
+    production_model_dir: str = os.path.join("artifacts", "production_model")

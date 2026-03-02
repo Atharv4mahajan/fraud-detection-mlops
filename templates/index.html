@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fraud Detection System</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: linear-gradient(135deg, #1f4037, #99f2c8);
+            text-align: center;
+            padding: 50px;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            width: 500px;
+            margin: auto;
+            box-shadow: 0px 0px 20px rgba(0,0,0,0.2);
+        }
+
+        input[type=file] {
+            margin: 20px 0;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #1f4037;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #14532d;
+        }
+
+        .result {
+            margin-top: 20px;
+            font-weight: bold;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Fraud Detection System</h2>
+    <p>Upload credit card transaction CSV file</p>
+
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <br>
+        <button type="submit">Predict</button>
+    </form>
+
+    {% if message %}
+        <div class="result">
+            {{ message }} <br>
+            Total Rows: {{ rows }} <br>
+            Fraud Detected: {{ fraud_count }}
+        </div>
+    {% endif %}
+</div>
+
+</body>
+</html>

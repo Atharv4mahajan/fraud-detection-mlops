@@ -8,3 +8,5 @@ notebook/creditcard.csv
 notebook/*.csv
 *.csv
 *.egg-info/
+*.h5
+*.pkl

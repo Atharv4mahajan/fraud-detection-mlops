@@ -27,3 +27,7 @@ class ModelEvaluationArtifact:
     roc_auc: float
     threshold: float
     report_file_path: str
+@dataclass
+class ModelPusherArtifact:
+    is_model_pushed: bool
+    production_model_path: str

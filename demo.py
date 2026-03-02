@@ -7,6 +7,9 @@ from src.components.model_trainer import ModelTrainer
 from src.entity.config_entity import ModelTrainerConfig
 from src.components.model_evaluation import ModelEvaluation
 from src.entity.config_entity import ModelEvaluationConfig
+from src.components.model_pusher import ModelPusher
+from src.entity.config_entity import ModelPusherConfig
+
 
 # Data Ingestion
 ingestion_config = DataIngestionConfig()
@@ -71,3 +74,16 @@ model_evaluation = ModelEvaluation(
 evaluation_artifact = model_evaluation.initiate_model_evaluation()
 
 print(evaluation_artifact)
+print("Evaluation successful")
+
+pusher_config = ModelPusherConfig()
+
+model_pusher = ModelPusher(
+    pusher_config,
+    trainer_artifact.trained_model_file_path,
+    evaluation_artifact.report_file_path
+)
+
+pusher_artifact = model_pusher.initiate_model_pusher()
+
+print(pusher_artifact)
