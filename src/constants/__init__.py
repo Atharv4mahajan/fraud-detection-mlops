@@ -30,5 +30,8 @@ AWS_ACCESS_KEY_ID = "AWS_ACCESS_KEY_ID"
 AWS_SECRET_ACCESS_KEY = "AWS_SECRET_ACCESS_KEY"
 AWS_REGION = "us-east-1"
 
-MODEL_BUCKET_NAME = "fraud-mlops-model-registry"
-MODEL_S3_KEY = "production-model/model.h5"
+MODEL_BUCKET_NAME = "atharv-fraud-mlops-models"
+
+MODEL_S3_KEY = "fraud-detection/model.h5"
+
+EVALUATION_S3_KEY = "fraud-detection/evaluation_report.yaml"

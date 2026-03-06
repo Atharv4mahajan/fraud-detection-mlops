@@ -64,7 +64,7 @@ class ModelTrainer:
             model.fit(
                 X_train,
                 X_train,
-                epochs=55,
+                epochs=15,
                 batch_size=256,
                 validation_split=0.1,
                 verbose=1

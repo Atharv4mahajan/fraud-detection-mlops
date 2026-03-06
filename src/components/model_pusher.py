@@ -8,7 +8,7 @@ from src.entity.artifact_entity import ModelPusherArtifact
 from src.exception.exception import CustomException
 from src.logging.logger import logger
 from src.configuration.aws_connection import S3Client
-from src.constants import MODEL_BUCKET_NAME, MODEL_S3_KEY
+from src.constants import MODEL_BUCKET_NAME, MODEL_S3_KEY, EVALUATION_S3_KEY
 
 
 class ModelPusher:
@@ -40,31 +40,38 @@ class ModelPusher:
 
             s3_client = S3Client()
 
-            # ---------------------------------------------------
+            # --------------------------------------------
             # CASE 1: No production model exists
-            # ---------------------------------------------------
+            # --------------------------------------------
             if not os.path.exists(production_model_path):
 
                 shutil.copy(self.model_path, production_model_path)
                 shutil.copy(self.evaluation_report_path, production_report_path)
 
-                # Upload to S3
+                # Upload model
                 s3_client.upload_file(
                     production_model_path,
                     MODEL_BUCKET_NAME,
                     MODEL_S3_KEY
                 )
 
-                logger.info("No existing production model. Model promoted and uploaded to S3.")
+                # Upload evaluation report
+                s3_client.upload_file(
+                    production_report_path,
+                    MODEL_BUCKET_NAME,
+                    EVALUATION_S3_KEY
+                )
+
+                logger.info("No production model found. Model promoted and uploaded to S3.")
 
                 return ModelPusherArtifact(
                     is_model_pushed=True,
                     production_model_path=production_model_path
                 )
 
-            # ---------------------------------------------------
-            # CASE 2: Production model exists → Compare F1
-            # ---------------------------------------------------
+            # --------------------------------------------
+            # CASE 2: Compare new model with production
+            # --------------------------------------------
             with open(production_report_path, "r") as f:
                 production_metrics = yaml.safe_load(f)
 
@@ -76,14 +83,21 @@ class ModelPusher:
                 shutil.copy(self.model_path, production_model_path)
                 shutil.copy(self.evaluation_report_path, production_report_path)
 
-                # Upload updated model to S3
+                # Upload updated model
                 s3_client.upload_file(
                     production_model_path,
                     MODEL_BUCKET_NAME,
                     MODEL_S3_KEY
                 )
 
-                logger.info("New model better. Model promoted and uploaded to S3.")
+                # Upload updated report
+                s3_client.upload_file(
+                    production_report_path,
+                    MODEL_BUCKET_NAME,
+                    EVALUATION_S3_KEY
+                )
+
+                logger.info("New model better. Promoted and uploaded to S3.")
 
                 return ModelPusherArtifact(
                     is_model_pushed=True,
@@ -91,6 +105,7 @@ class ModelPusher:
                 )
 
             else:
+
                 logger.info("New model worse. Not promoted.")
 
                 return ModelPusherArtifact(

@@ -1,4 +1,5 @@
 import boto3
+import os
 from src.exception.exception import CustomException
 import sys
 
@@ -7,8 +8,10 @@ class S3Client:
 
     def __init__(self):
         try:
-            # Let boto3 automatically read env variables
-            self.s3 = boto3.client("s3")
+            self.s3 = boto3.client(
+                "s3",
+                region_name=os.getenv("AWS_DEFAULT_REGION")
+            )
         except Exception as e:
             raise CustomException(e, sys)
 
