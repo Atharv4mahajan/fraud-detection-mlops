@@ -1,84 +1,85 @@
-name: build-and-deploy
+name: Deploy Fraud Detection Docker Image to EC2
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
-  build-and-deploy:
-    runs-on: self-hosted
+
+  Continuous-Integration:
+    runs-on: ubuntu-latest
 
     steps:
 
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v3
 
 
-      # Configure AWS
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
 
-      # Login to ECR
       - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+
+      - name: Build, tag, and push Docker image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPO }}
+          IMAGE_TAG: latest
+
         run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} \
-          | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO }}
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
 
-      # Clean old docker artifacts (important)
-      - name: Clean Old Docker Images
-        run: |
-          docker system prune -af || true
+
+  Continuous-Deployment:
+    needs: Continuous-Integration
+    runs-on: self-hosted
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v3
 
 
-      # Build Docker Image
-      - name: Build Docker Image
-        run: |
-          docker build --no-cache -t fraud-mlops-app .
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
 
-      # Tag image for ECR
-      - name: Tag Docker Image
-        run: |
-          docker tag fraud-mlops-app:latest ${{ secrets.ECR_REPO }}:latest
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
 
-      # Push to ECR
-      - name: Push Docker Image
-        run: |
-          docker push ${{ secrets.ECR_REPO }}:latest
-
-
-      # Stop running container
-      - name: Stop Existing Container
+      - name: Stop old container
         run: |
           docker stop fraud-container || true
           docker rm fraud-container || true
 
 
-      # Pull latest image from ECR
-      - name: Pull Latest Image
+      - name: Pull latest image
         run: |
-          docker pull ${{ secrets.ECR_REPO }}:latest
+          docker pull ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPO }}:latest
 
 
       - name: Run Docker Container
         run: |
           docker run -d \
-          -p 5080:5080 \
           --name fraud-container \
-          -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
-          -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
-          -e AWS_DEFAULT_REGION=${{ secrets.AWS_DEFAULT_REGION }} \
-          ${{ secrets.ECR_REPO }}:latest
-
-      # Show container status (debug step)
-      - name: Check Running Containers
-        run: |
-          docker ps
+          -p 5080:5080 \
+          -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+          -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+          -e AWS_DEFAULT_REGION="${{ secrets.AWS_DEFAULT_REGION }}" \
+          ${{ steps.login-ecr.outputs.registry }}/${{ secrets.ECR_REPO }}:latest
