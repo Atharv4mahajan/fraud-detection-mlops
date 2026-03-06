@@ -10,9 +10,12 @@ jobs:
     runs-on: self-hosted
 
     steps:
+
       - name: Checkout Code
         uses: actions/checkout@v3
 
+
+      # Configure AWS
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -20,27 +23,62 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_DEFAULT_REGION }}
 
+
+      # Login to ECR
       - name: Login to Amazon ECR
         run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO }}
+          aws ecr get-login-password --region ${{ secrets.AWS_DEFAULT_REGION }} \
+          | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO }}
 
+
+      # Clean old docker artifacts (important)
+      - name: Clean Old Docker Images
+        run: |
+          docker system prune -af || true
+
+
+      # Build Docker Image
       - name: Build Docker Image
         run: |
           docker build --no-cache -t fraud-mlops-app .
 
+
+      # Tag image for ECR
       - name: Tag Docker Image
         run: |
           docker tag fraud-mlops-app:latest ${{ secrets.ECR_REPO }}:latest
 
+
+      # Push to ECR
       - name: Push Docker Image
         run: |
           docker push ${{ secrets.ECR_REPO }}:latest
 
+
+      # Stop running container
       - name: Stop Existing Container
         run: |
           docker stop fraud-container || true
           docker rm fraud-container || true
 
+
+      # Pull latest image from ECR
+      - name: Pull Latest Image
+        run: |
+          docker pull ${{ secrets.ECR_REPO }}:latest
+
+
+      # Run container
       - name: Run Docker Container
         run: |
-          docker run -d -p 5080:5080 --name fraud-container ${{ secrets.ECR_REPO }}:latest
+          docker run -d \
+          -p 5080:5080 \
+          --name fraud-container \
+          --restart always \
+          ${{ secrets.ECR_REPO }}:latest
+
+
+      # Show container status (debug step)
+      - name: Check Running Containers
+        run: |
+          docker ps
