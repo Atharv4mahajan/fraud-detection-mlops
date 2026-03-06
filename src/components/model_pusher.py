@@ -1,88 +1,118 @@
 import os
 import sys
-import numpy as np
-import pandas as pd
-import tensorflow as tf
-import pickle
+import shutil
 import yaml
 
+from src.entity.config_entity import ModelPusherConfig
+from src.entity.artifact_entity import ModelPusherArtifact
 from src.exception.exception import CustomException
+from src.logging.logger import logger
 from src.configuration.aws_connection import S3Client
-from src.constants import MODEL_BUCKET_NAME
+from src.constants import MODEL_BUCKET_NAME, MODEL_S3_KEY, EVALUATION_S3_KEY
 
 
-class PredictionPipeline:
+class ModelPusher:
 
-    def __init__(self):
+    def __init__(self,
+                 config: ModelPusherConfig,
+                 model_path: str,
+                 evaluation_report_path: str):
+
+        self.config = config
+        self.model_path = model_path
+        self.evaluation_report_path = evaluation_report_path
+
+    def initiate_model_pusher(self) -> ModelPusherArtifact:
         try:
+            logger.info("Starting Model Pusher")
 
-            artifacts_dir = "artifacts"
-            production_dir = os.path.join(artifacts_dir, "production_model")
+            os.makedirs(self.config.production_model_dir, exist_ok=True)
 
-            os.makedirs(production_dir, exist_ok=True)
+            production_model_path = os.path.join(
+                self.config.production_model_dir,
+                "model.h5"
+            )
 
-            self.model_path = os.path.join(production_dir, "model.h5")
-            self.preprocessor_path = os.path.join(production_dir, "preprocessor.pkl")
-            self.report_path = os.path.join(production_dir, "evaluation_report.yaml")
+            production_report_path = os.path.join(
+                self.config.production_model_dir,
+                "evaluation_report.yaml"
+            )
 
             s3_client = S3Client()
 
-            # download artifacts if missing
-            if not os.path.exists(self.model_path):
-                s3_client.download_file(
+            # --------------------------------------------
+            # CASE 1: No production model exists
+            # --------------------------------------------
+            if not os.path.exists(production_model_path):
+
+                shutil.copy(self.model_path, production_model_path)
+                shutil.copy(self.evaluation_report_path, production_report_path)
+
+                # Upload model
+                s3_client.upload_file(
+                    production_model_path,
                     MODEL_BUCKET_NAME,
-                    "fraud-detection/model.h5",
-                    self.model_path
+                    MODEL_S3_KEY
                 )
 
-            if not os.path.exists(self.preprocessor_path):
-                s3_client.download_file(
+                # Upload evaluation report
+                s3_client.upload_file(
+                    production_report_path,
                     MODEL_BUCKET_NAME,
-                    "fraud-detection/preprocessor.pkl",
-                    self.preprocessor_path
+                    EVALUATION_S3_KEY
+                )
+                
+
+                logger.info("No production model found. Model promoted and uploaded to S3.")
+
+                return ModelPusherArtifact(
+                    is_model_pushed=True,
+                    production_model_path=production_model_path
                 )
 
-            if not os.path.exists(self.report_path):
-                s3_client.download_file(
+            # --------------------------------------------
+            # CASE 2: Compare new model with production
+            # --------------------------------------------
+            with open(production_report_path, "r") as f:
+                production_metrics = yaml.safe_load(f)
+
+            with open(self.evaluation_report_path, "r") as f:
+                new_metrics = yaml.safe_load(f)
+
+            if new_metrics["f1_score"] > production_metrics["f1_score"]:
+
+                shutil.copy(self.model_path, production_model_path)
+                shutil.copy(self.evaluation_report_path, production_report_path)
+
+                # Upload updated model
+                s3_client.upload_file(
+                    production_model_path,
                     MODEL_BUCKET_NAME,
-                    "fraud-detection/evaluation_report.yaml",
-                    self.report_path
+                    MODEL_S3_KEY
                 )
 
-            # load model
-            self.model = tf.keras.models.load_model(self.model_path, compile=False)
+                # Upload updated report
+                s3_client.upload_file(
+                    production_report_path,
+                    MODEL_BUCKET_NAME,
+                    EVALUATION_S3_KEY
+                )
 
-            # load preprocessor
-            with open(self.preprocessor_path, "rb") as f:
-                self.preprocessor = pickle.load(f)
+                logger.info("New model better. Promoted and uploaded to S3.")
 
-        except Exception as e:
-            raise CustomException(e, sys)
+                return ModelPusherArtifact(
+                    is_model_pushed=True,
+                    production_model_path=production_model_path
+                )
 
-    def predict(self, input_data: dict):
+            else:
 
-        try:
+                logger.info("New model worse. Not promoted.")
 
-            df = pd.DataFrame([input_data])
-
-            transformed = self.preprocessor.transform(df)
-
-            reconstruction = self.model.predict(transformed)
-
-            mse = np.mean(np.power(transformed - reconstruction, 2), axis=1)
-
-            with open(self.report_path, "r") as f:
-                report = yaml.safe_load(f)
-
-            threshold = report["threshold"]
-
-            prediction = int(mse[0] > threshold)
-
-            return {
-                "fraud_prediction": prediction,
-                "reconstruction_error": float(mse[0]),
-                "threshold": float(threshold)
-            }
+                return ModelPusherArtifact(
+                    is_model_pushed=False,
+                    production_model_path=production_model_path
+                )
 
         except Exception as e:
             raise CustomException(e, sys)

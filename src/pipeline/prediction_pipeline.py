@@ -7,44 +7,52 @@ import pickle
 import yaml
 
 from src.exception.exception import CustomException
+from src.configuration.aws_connection import S3Client
+from src.constants import MODEL_BUCKET_NAME
 
 
 class PredictionPipeline:
 
     def __init__(self):
         try:
+
             artifacts_dir = "artifacts"
+            production_dir = os.path.join(artifacts_dir, "production_model")
 
-            # Filter only timestamp folders (start with digit)
-            runs = sorted([
-                d for d in os.listdir(artifacts_dir)
-                if os.path.isdir(os.path.join(artifacts_dir, d))
-                and d[0].isdigit()
-            ])
+            os.makedirs(production_dir, exist_ok=True)
 
-            if not runs:
-                raise Exception("No experiment runs found.")
+            self.model_path = os.path.join(production_dir, "model.h5")
+            self.preprocessor_path = os.path.join(production_dir, "preprocessor.pkl")
+            self.report_path = os.path.join(production_dir, "evaluation_report.yaml")
 
-            latest_run = runs[-1]
+            s3_client = S3Client()
 
-            self.model_path = os.path.join(
-                artifacts_dir,
-                "production_model",
-                "model.h5"
-            )
-
-            self.preprocessor_path = os.path.join(
-                artifacts_dir,
-                latest_run,
-                "data_transformation",
-                "preprocessor.pkl"
-            )
+            # download artifacts if missing
+            if not os.path.exists(self.model_path):
+                s3_client.download_file(
+                    MODEL_BUCKET_NAME,
+                    "fraud-detection/model.h5",
+                    self.model_path
+                )
 
             if not os.path.exists(self.preprocessor_path):
-                raise Exception("Preprocessor not found in latest run.")
+                s3_client.download_file(
+                    MODEL_BUCKET_NAME,
+                    "fraud-detection/preprocessor.pkl",
+                    self.preprocessor_path
+                )
 
+            if not os.path.exists(self.report_path):
+                s3_client.download_file(
+                    MODEL_BUCKET_NAME,
+                    "fraud-detection/evaluation_report.yaml",
+                    self.report_path
+                )
+
+            # load model
             self.model = tf.keras.models.load_model(self.model_path, compile=False)
 
+            # load preprocessor
             with open(self.preprocessor_path, "rb") as f:
                 self.preprocessor = pickle.load(f)
 
@@ -54,20 +62,16 @@ class PredictionPipeline:
     def predict(self, input_data: dict):
 
         try:
+
             df = pd.DataFrame([input_data])
 
             transformed = self.preprocessor.transform(df)
 
             reconstruction = self.model.predict(transformed)
+
             mse = np.mean(np.power(transformed - reconstruction, 2), axis=1)
 
-            report_path = os.path.join(
-                "artifacts",
-                "production_model",
-                "evaluation_report.yaml"
-            )
-
-            with open(report_path, "r") as f:
+            with open(self.report_path, "r") as f:
                 report = yaml.safe_load(f)
 
             threshold = report["threshold"]
